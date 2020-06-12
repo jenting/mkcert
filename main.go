@@ -23,6 +23,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/net/idna"
 )
@@ -47,6 +48,9 @@ const shortUsage = `Usage of mkcert:
 `
 
 const advancedUsage = `Advanced options:
+
+	-duration
+	    Certificate duration (default to 8760h0m0s).
 
 	-cert-file FILE, -key-file FILE, -p12-file FILE
 	    Customize the output paths.
@@ -99,6 +103,7 @@ func main() {
 		keyFileFlag   = flag.String("key-file", "", "")
 		p12FileFlag   = flag.String("p12-file", "", "")
 		versionFlag   = flag.Bool("version", false, "")
+		durationFlag  = flag.Duration("duration", time.Hour*24*365, "")
 	)
 	flag.Usage = func() {
 		fmt.Fprint(flag.CommandLine.Output(), shortUsage)
@@ -140,7 +145,7 @@ func main() {
 	}
 	(&mkcert{
 		installMode: *installFlag, uninstallMode: *uninstallFlag, csrPath: *csrFlag,
-		pkcs12: *pkcs12Flag, ecdsa: *ecdsaFlag, client: *clientFlag,
+		pkcs12: *pkcs12Flag, ecdsa: *ecdsaFlag, client: *clientFlag, duration: *durationFlag,
 		certFile: *certFileFlag, keyFile: *keyFileFlag, p12File: *p12FileFlag,
 	}).Run(flag.Args())
 }
@@ -153,6 +158,7 @@ type mkcert struct {
 	pkcs12, ecdsa, client      bool
 	keyFile, certFile, p12File string
 	csrPath                    string
+	duration                   time.Duration
 
 	CAROOT string
 	caCert *x509.Certificate
@@ -230,7 +236,7 @@ func (m *mkcert) Run(args []string) {
 		}
 	}
 
-	m.makeCert(args)
+	m.makeCert(args, m.duration)
 }
 
 func getCAROOT() string {
